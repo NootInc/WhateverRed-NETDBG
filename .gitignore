@@ -1,0 +1,6 @@
+target/
+dist/
+.vscode/
+Cargo.lock
+/config.ron
+/logs/

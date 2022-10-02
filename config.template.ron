@@ -1,0 +1,7 @@
+ServerConfig (
+    ip: "127.0.0.1",
+    api_port: 8080,
+    logger_port: 8081,
+    secret: "YourServerLogActionSecret",
+    log_dir: "./logs",
+)

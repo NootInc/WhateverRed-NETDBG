@@ -1,0 +1,41 @@
+[package]
+name = "wred-client"
+version = "0.1.0"
+edition = "2021"
+publish = false
+resolver = "2"
+
+[dependencies]
+egui = { git = "https://github.com/emilk/egui", version = "0.19.0", features = [
+    "persistence",
+    "tracing",
+] }
+serde = { version = "1.0.145", features = ["derive"] }
+postcard = { version = "1.0.2", default-features = false, features = [
+    "use-std",
+] }
+ron = "0.8.0"
+sequence-generator-rust = "0.3.1"
+wred-server = { path = "../wred-server", default-features = false }
+poll-promise = "0.1.0"
+ehttp = { git = "https://github.com/emilk/ehttp", version = "0.2.0" }
+chrono = "0.4.22"
+timeago = "0.3.1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+eframe = { git = "https://github.com/emilk/egui", version = "0.19.0", default-features = false, features = [
+    "persistence",
+    "wgpu",
+    "dark-light",
+] }
+tracing-subscriber = "0.3.15"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+eframe = { git = "https://github.com/emilk/egui", version = "0.19.0", default-features = false, features = [
+    "persistence",
+    "glow",
+    "dark-light",
+] }
+console_error_panic_hook = "0.1.7"
+tracing-wasm = "0.2.1"
+web-sys = { version = "0.3.60", features = ['Document', "Location"] }
