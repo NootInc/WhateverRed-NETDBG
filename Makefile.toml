@@ -8,10 +8,21 @@ command = "trunk"
 cwd = "wred-client"
 args = ["build", "-d", "../dist"]
 
+[tasks.make-dist-release]
+install_crate = "trunk"
+command = "trunk"
+cwd = "wred-client"
+args = ["build", "-d", "../dist", "--release"]
+
 [tasks.serve]
 command = "cargo"
 args = ["run", "--bin", "wred-server"]
 dependencies = ["clean-dist", "make-dist"]
+
+[tasks.serve-release]
+command = "cargo"
+args = ["run", "--bin", "wred-server", "--release"]
+dependencies = ["clean-dist", "make-dist-release"]
 
 [config]
 default_to_workspace = false
