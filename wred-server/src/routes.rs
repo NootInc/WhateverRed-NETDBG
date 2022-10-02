@@ -39,33 +39,25 @@ async fn delete_log(
     path: web::Path<String>,
     data: web::Data<super::state::AppState>,
     body: web::Bytes,
-) -> impl Responder {
+) -> std::io::Result<HttpResponse> {
     let id: u64 = path.into_inner().parse().unwrap();
     let data = data.into_inner();
     let mut logs = data.logs.lock().await;
-    postcard::from_bytes(&body).map_or_else(
-        move |v| HttpResponse::BadRequest().body(format!("Failed to deserialise: {}", v)),
-        |v: String| {
-            if v == data.config.secret {
-                logs.remove(&id).map_or_else(
-                    || HttpResponse::NotFound().finish(),
-                    |v| {
-                        let _e =
-                            std::fs::remove_file(data.config.log_dir.join(format!("{}.log", id)));
-                        postcard::to_allocvec(&v).map_or_else(
-                            |e| {
-                                HttpResponse::InternalServerError()
-                                    .body(format!("Failed to serialise: {}", e))
-                            },
-                            |v| HttpResponse::Ok().body(v),
-                        )
-                    },
-                )
-            } else {
-                HttpResponse::Unauthorized().finish()
+    let secret: String = postcard::from_bytes(&body)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    if secret == data.config.secret {
+        if logs.remove(&id).is_none() {
+            Ok(HttpResponse::NotFound().finish())
+        } else {
+            let path = data.config.log_dir.join(format!("{}.log", id));
+            if path.exists() {
+                tokio::fs::remove_file(path).await?;
             }
-        },
-    )
+            Ok(HttpResponse::Ok().finish())
+        }
+    } else {
+        Ok(HttpResponse::Unauthorized().finish())
+    }
 }
 
 #[post("/{id:[[:digit:]]+}")]
@@ -73,38 +65,25 @@ async fn save_log(
     path: web::Path<String>,
     data: web::Data<super::state::AppState>,
     body: web::Bytes,
-) -> impl Responder {
+) -> std::io::Result<HttpResponse> {
     let id: u64 = path.into_inner().parse().unwrap();
     let data = data.into_inner();
     let logs = data.logs.lock().await;
-    postcard::from_bytes(&body).map_or_else(
-        move |v| HttpResponse::BadRequest().body(format!("Failed to deserialise: {}", v)),
-        |v: String| {
-            if v == data.config.secret {
-                logs.get(&id).map_or_else(
-                    || HttpResponse::NotFound().finish(),
-                    |v| {
-                        postcard::to_allocvec(&(id, v)).map_or_else(
-                            |e| {
-                                HttpResponse::InternalServerError()
-                                    .body(format!("Failed to serialise: {}", e))
-                            },
-                            |v| {
-                                std::fs::write(data.config.log_dir.join(format!("{id}.log")), &v)
-                                    .map_or_else(
-                                        |e| {
-                                            HttpResponse::InternalServerError()
-                                                .body(format!("Failed to save log: {}", e))
-                                        },
-                                        |_| HttpResponse::Ok().finish(),
-                                    )
-                            },
-                        )
-                    },
-                )
-            } else {
-                HttpResponse::Unauthorized().finish()
-            }
-        },
-    )
+    let secret: String = postcard::from_bytes(&body)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    if secret == data.config.secret {
+        if let Some(v) = logs.get(&id) {
+            tokio::fs::write(
+                data.config.log_dir.join(format!("{id}.log")),
+                &postcard::to_allocvec(&(id, v))
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?,
+            )
+            .await?;
+            Ok(HttpResponse::Ok().finish())
+        } else {
+            Ok(HttpResponse::NotFound().finish())
+        }
+    } else {
+        Ok(HttpResponse::Unauthorized().finish())
+    }
 }

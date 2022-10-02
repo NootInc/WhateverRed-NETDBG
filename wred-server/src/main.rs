@@ -9,6 +9,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 use actix_web::{web, App, HttpServer};
+use tokio::io::AsyncReadExt;
 
 mod log_service;
 mod routes;
@@ -16,19 +17,29 @@ mod state;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    let f = std::fs::File::open("./config.ron").expect("Failed opening config");
-    let config: state::ServerConfig = ron::de::from_reader(f).unwrap();
+    let mut f = tokio::fs::File::open("./config.ron")
+        .await
+        .expect("Failed opening config");
+    let mut s = String::new();
+    f.read_to_string(&mut s).await.unwrap();
+    let config: state::ServerConfig = ron::de::from_str(&s).unwrap();
     let state = web::Data::new(state::AppState {
         config,
         ..Default::default()
     });
-    let _e = std::fs::create_dir_all(&state.config.log_dir);
-    for ent in std::fs::read_dir(&state.config.log_dir).unwrap() {
-        let path = ent.unwrap().path();
-        if path.is_file() {
-            let data = std::fs::read(path).unwrap();
-            let ent: (u64, wred_server::LogEntry) = postcard::from_bytes(&data).unwrap();
-            state.logs.lock().await.insert(ent.0, ent.1);
+    let _e = tokio::fs::create_dir_all(&state.config.log_dir).await;
+    let mut rd = tokio::fs::read_dir(&state.config.log_dir).await.unwrap();
+    loop {
+        match rd.next_entry().await.unwrap() {
+            None => break,
+            Some(ent) => {
+                let path = ent.path();
+                if path.is_file() {
+                    let data = tokio::fs::read(path).await.unwrap();
+                    let ent: (u64, wred_server::LogEntry) = postcard::from_bytes(&data).unwrap();
+                    state.logs.lock().await.insert(ent.0, ent.1);
+                }
+            }
         }
     }
 
