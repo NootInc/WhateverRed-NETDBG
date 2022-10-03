@@ -27,25 +27,27 @@ async fn handle_connection(
         if n == 0 {
             break;
         }
-    }
 
-    let (properties, id) = generate_id();
-    let v = wred_server::LogEntry {
-        last_updated: sequence_generator::decode_id_unix_epoch_micros(id, &properties),
-        addr,
-        data: String::from_utf8_lossy(&buf).to_string(),
-    };
-    println!("{v:#?}");
+        let (properties, id) = generate_id();
+        let v = wred_server::LogEntry {
+            last_updated: sequence_generator::decode_id_unix_epoch_micros(id, &properties),
+            addr,
+            data: String::from_utf8_lossy(&buf).to_string(),
+        };
+        println!("{v:#?}");
 
-    let mut logs = log_entries.lock().unwrap();
-    if let Some((_, ent)) = logs
-        .iter_mut()
-        .find(|(_, e)| e.addr.ip() == addr.ip() && v.last_updated - e.last_updated < 60_000_000)
-    {
-        ent.last_updated = v.last_updated;
-        ent.data += &v.data;
-    } else {
-        logs.insert(id, v);
+        let mut logs = log_entries.lock().unwrap();
+        if let Some((_, ent)) = logs
+            .iter_mut()
+            .find(|(_, e)| e.addr.ip() == addr.ip() && v.last_updated - e.last_updated < 60_000_000)
+        {
+            ent.last_updated = v.last_updated;
+            ent.data += &v.data;
+        } else {
+            logs.insert(id, v);
+        }
+
+        buf.clear();
     }
 }
 
