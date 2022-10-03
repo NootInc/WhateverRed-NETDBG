@@ -1,8 +1,12 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use actix_web::web;
 use sequence_generator::sequence_generator;
 use tokio::io::AsyncReadExt;
+use wred_server::LogEntry;
 
 fn generate_id() -> (sequence_generator::SequenceProperties, u64) {
     let properties = wred_server::get_id_props();
@@ -11,9 +15,9 @@ fn generate_id() -> (sequence_generator::SequenceProperties, u64) {
 }
 
 async fn handle_connection(
-    logs: &mut HashMap<u64, wred_server::LogEntry>,
     mut stream: tokio::net::TcpStream,
     addr: std::net::SocketAddr,
+    log_entries: Arc<Mutex<HashMap<u64, LogEntry>>>,
 ) {
     stream.readable().await.unwrap();
     println!("Incoming connection from: {}", addr.ip());
@@ -33,6 +37,7 @@ async fn handle_connection(
     };
     println!("{v:#?}");
 
+    let mut logs = log_entries.lock().unwrap();
     if let Some((_, ent)) = logs
         .iter_mut()
         .find(|(_, e)| e.addr.ip() == addr.ip() && v.last_updated - e.last_updated < 60_000_000)
@@ -44,16 +49,16 @@ async fn handle_connection(
     }
 }
 
-pub fn start_log_receiver(state: web::Data<crate::state::AppState>) {
+pub async fn start_log_receiver(state: web::Data<crate::state::AppState>) -> std::io::Result<()> {
     let bind = (state.config.ip.clone(), state.config.logger_port);
-    tokio::spawn(async move {
-        let listener = tokio::net::TcpListener::bind(bind).await.unwrap();
-        loop {
-            let (stream, addr) = listener.accept().await.unwrap();
-            let log_entries = Arc::clone(&state.logs);
-            tokio::spawn(async move {
-                handle_connection(&mut *log_entries.lock().await, stream, addr).await;
-            });
-        }
-    });
+
+    let listener = tokio::net::TcpListener::bind(bind).await?;
+    loop {
+        let (stream, addr) = listener.accept().await?;
+        let log_entries = state.logs.clone();
+
+        tokio::spawn(async move {
+            handle_connection(stream, addr, log_entries).await;
+        });
+    }
 }

@@ -1,9 +1,10 @@
 use actix_web::{delete, get, post, web, HttpResponse, Responder};
 
 #[get("/all")]
+#[allow(clippy::unused_async)]
 async fn get_logs(data: web::Data<super::state::AppState>) -> impl Responder {
     let data = data.into_inner();
-    let logs = data.logs.lock().await;
+    let logs = data.logs.lock().unwrap();
     println!("{logs:?}");
     let resp: Vec<_> = logs
         .iter()
@@ -21,13 +22,14 @@ async fn get_logs(data: web::Data<super::state::AppState>) -> impl Responder {
 }
 
 #[get("/{id:[[:digit:]]+}")]
+#[allow(clippy::unused_async)]
 async fn get_log(
     path: web::Path<String>,
     data: web::Data<super::state::AppState>,
 ) -> impl Responder {
     let id: u64 = path.into_inner().parse().unwrap();
     let data = data.into_inner();
-    let logs = data.logs.lock().await;
+    let logs = data.logs.lock().unwrap();
     logs.get(&id).map_or_else(
         || HttpResponse::NotFound().finish(),
         |v| HttpResponse::Ok().body(postcard::to_allocvec(&v).unwrap()),
@@ -42,11 +44,11 @@ async fn delete_log(
 ) -> std::io::Result<HttpResponse> {
     let id: u64 = path.into_inner().parse().unwrap();
     let data = data.into_inner();
-    let mut logs = data.logs.lock().await;
+
     let secret: String = postcard::from_bytes(&body)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
     if secret == data.config.secret {
-        if logs.remove(&id).is_none() {
+        if data.logs.lock().unwrap().remove(&id).is_none() {
             Ok(HttpResponse::NotFound().finish())
         } else {
             let path = data.config.log_dir.join(format!("{}.log", id));
@@ -68,17 +70,19 @@ async fn save_log(
 ) -> std::io::Result<HttpResponse> {
     let id: u64 = path.into_inner().parse().unwrap();
     let data = data.into_inner();
-    let logs = data.logs.lock().await;
+
     let secret: String = postcard::from_bytes(&body)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
     if secret == data.config.secret {
-        if let Some(v) = logs.get(&id) {
-            tokio::fs::write(
-                data.config.log_dir.join(format!("{id}.log")),
-                &postcard::to_allocvec(&(id, v))
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?,
-            )
-            .await?;
+        let v = data
+            .logs
+            .lock()
+            .unwrap()
+            .get(&id)
+            .map(|v| postcard::to_allocvec(&(id, v)));
+        if let Some(v) = v {
+            let resp = v.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            tokio::fs::write(data.config.log_dir.join(format!("{id}.log")), &resp).await?;
             Ok(HttpResponse::Ok().finish())
         } else {
             Ok(HttpResponse::NotFound().finish())

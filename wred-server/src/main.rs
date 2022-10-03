@@ -37,24 +37,27 @@ async fn main() -> std::io::Result<()> {
                 if path.is_file() {
                     let data = tokio::fs::read(path).await.unwrap();
                     let ent: (u64, wred_server::LogEntry) = postcard::from_bytes(&data).unwrap();
-                    state.logs.lock().await.insert(ent.0, ent.1);
+                    state.logs.lock().unwrap().insert(ent.0, ent.1);
                 }
             }
         }
     }
 
-    log_service::start_log_receiver(state.clone());
     let bind = (state.config.ip.clone(), state.config.api_port);
-    HttpServer::new(move || {
-        App::new()
-            .app_data(state.clone())
-            .service(routes::get_logs)
-            .service(routes::get_log)
-            .service(routes::delete_log)
-            .service(routes::save_log)
-            .service(actix_files::Files::new("/", "./dist").index_file("index.html"))
-    })
-    .bind(bind)?
-    .run()
-    .await
+    futures::future::try_join(
+        log_service::start_log_receiver(state.clone()),
+        HttpServer::new(move || {
+            App::new()
+                .app_data(state.clone())
+                .service(routes::get_logs)
+                .service(routes::get_log)
+                .service(routes::delete_log)
+                .service(routes::save_log)
+                .service(actix_files::Files::new("/", "./dist").index_file("index.html"))
+        })
+        .bind(bind)?
+        .run(),
+    )
+    .await?;
+    Ok(())
 }
