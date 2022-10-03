@@ -44,20 +44,18 @@ async fn main() -> std::io::Result<()> {
     }
 
     let bind = (state.config.ip.clone(), state.config.api_port);
-    futures::future::try_join(
-        log_service::start_log_receiver(state.clone()),
-        HttpServer::new(move || {
-            App::new()
-                .app_data(state.clone())
-                .service(routes::get_logs)
-                .service(routes::get_log)
-                .service(routes::delete_log)
-                .service(routes::save_log)
-                .service(actix_files::Files::new("/", "./dist").index_file("index.html"))
-        })
-        .bind(bind)?
-        .run(),
-    )
-    .await?;
-    Ok(())
+    log_service::start_log_receiver(state.clone());
+
+    HttpServer::new(move || {
+        App::new()
+            .app_data(state.clone())
+            .service(routes::get_logs)
+            .service(routes::get_log)
+            .service(routes::delete_log)
+            .service(routes::save_log)
+            .service(actix_files::Files::new("/", "./dist").index_file("index.html"))
+    })
+    .bind(bind)?
+    .run()
+    .await
 }

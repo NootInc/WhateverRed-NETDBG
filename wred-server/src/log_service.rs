@@ -51,16 +51,19 @@ async fn handle_connection(
     }
 }
 
-pub async fn start_log_receiver(state: web::Data<crate::state::AppState>) -> std::io::Result<()> {
+pub fn start_log_receiver(state: web::Data<crate::state::AppState>) {
     let bind = (state.config.ip.clone(), state.config.logger_port);
 
-    let listener = tokio::net::TcpListener::bind(bind).await?;
-    loop {
-        let (stream, addr) = listener.accept().await?;
-        let log_entries = state.logs.clone();
+    tokio::spawn(async move {
+        let listener = tokio::net::TcpListener::bind(bind).await.unwrap();
 
-        tokio::spawn(async move {
-            handle_connection(stream, addr, log_entries).await;
-        });
-    }
+        loop {
+            let (stream, addr) = listener.accept().await.unwrap();
+            let log_entries = state.logs.clone();
+
+            tokio::spawn(async move {
+                handle_connection(stream, addr, log_entries).await;
+            });
+        }
+    });
 }
