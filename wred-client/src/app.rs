@@ -44,10 +44,6 @@ impl WRedNetDbgApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         cc.egui_ctx.set_fonts(crate::style::get_fonts());
 
-        let mut style = (*cc.egui_ctx.style()).clone();
-        crate::style::fix_style(&mut style);
-        cc.egui_ctx.set_style(style);
-
         if let Some(storage) = cc.storage {
             return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
         }
@@ -80,7 +76,7 @@ impl eframe::App for WRedNetDbgApp {
             .show(ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
                     #[cfg(target_os = "macos")]
-                    ui.add_space(62.5);
+                    ui.add_space(60.0);
                     ui.style_mut().spacing.item_spacing.x = 5.0;
                     ui.heading("WhateverRed");
                     ui.separator();
@@ -123,7 +119,7 @@ impl eframe::App for WRedNetDbgApp {
                     ui.spinner();
                 }
                 Some(Err(e)) => {
-                    ui.colored_label(Color32::RED, RichText::new(e).heading().strong());
+                    ui.colored_label(Color32::RED, RichText::new(e).heading());
                 }
                 Some(Ok(ents)) => {
                     ui.set_width(ui.available_width());
@@ -155,10 +151,7 @@ impl eframe::App for WRedNetDbgApp {
                                 .show_header(ui, |ui| {
                                     ui.horizontal(|ui| {
                                         ui.add(
-                                            Label::new(
-                                                RichText::new(ent.addr.to_string()).strong(),
-                                            )
-                                            .sense(Sense::click()),
+                                            Label::new(ent.addr.to_string()).sense(Sense::click()),
                                         )
                                         .context_menu(
                                             |ui| {
@@ -186,7 +179,7 @@ impl eframe::App for WRedNetDbgApp {
                                             + std::time::Duration::from_micros(ent.last_updated);
                                         let localtime = chrono::DateTime::<chrono::Local>::from(d);
                                         ui.separator();
-                                        ui.label(RichText::new("last updated").weak());
+                                        ui.label(RichText::new("updated").weak());
                                         ui.label(
                                             RichText::new(fmter.convert_chrono(localtime, now))
                                                 .weak(),
@@ -349,14 +342,17 @@ impl eframe::App for WRedNetDbgApp {
                                         }
                                         Some(Err(e)) => {
                                             ui.horizontal(|ui| {
-                                                ui.label(
-                                                    RichText::new("\u{1F5D9}").heading().strong(),
-                                                );
+                                                ui.label(RichText::new("\u{1F5D9}").heading());
                                                 ui.label(e);
                                             });
                                         }
                                         Some(Ok(ent)) => {
-                                            ui.label(ent.data.trim());
+                                            ui.add(
+                                                TextEdit::multiline(&mut ent.data.trim())
+                                                    .code_editor()
+                                                    .desired_width(f32::INFINITY)
+                                                    .hint_text("Nothing to see here"),
+                                            );
                                         }
                                     }
                                 })
