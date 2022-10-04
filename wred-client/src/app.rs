@@ -12,7 +12,7 @@ pub struct WRedNetDbgApp {
     base_url: String,
     secret: String,
     #[serde(skip)]
-    log_cache: HashMap<u64, Promise<Result<wred_server::LogEntry, String>>>,
+    log_cache: HashMap<u64, Promise<Result<String, String>>>,
     #[serde(skip)]
     log_cache_ents: Option<Promise<Result<Vec<wred_server::LogEntryPartial>, String>>>,
     #[serde(skip)]
@@ -220,7 +220,7 @@ impl eframe::App for WRedNetDbgApp {
                                                     .on_hover_text("Save to file")
                                                     .clicked()
                                                 {
-                                                    ui.output().copied_text = ent_full.data.clone();
+                                                    ui.output().copied_text = ent_full.clone();
                                                 }
                                                 if ui
                                                     .add(
@@ -232,7 +232,7 @@ impl eframe::App for WRedNetDbgApp {
                                                     .on_hover_text("\u{1F5D0} Copy text")
                                                     .clicked()
                                                 {
-                                                    ui.output().copied_text = ent_full.data.clone();
+                                                    ui.output().copied_text = ent_full.clone();
                                                 }
                                                 let resp = ui
                                                     .add_enabled(
@@ -358,7 +358,7 @@ impl eframe::App for WRedNetDbgApp {
                                         }
                                         Some(Ok(ent)) => {
                                             ui.add(
-                                                TextEdit::multiline(&mut ent.data.trim())
+                                                TextEdit::multiline(&mut ent.trim())
                                                     .code_editor()
                                                     .desired_width(f32::INFINITY)
                                                     .hint_text("Nothing to see here"),

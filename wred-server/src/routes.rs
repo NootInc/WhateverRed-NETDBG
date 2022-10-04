@@ -5,14 +5,18 @@ use actix_web::{delete, get, post, web, HttpResponse, Responder};
 async fn get_logs(data: web::Data<super::state::AppState>) -> impl Responder {
     let data = data.into_inner();
     let logs = data.logs.lock().unwrap();
-    println!("{logs:?}");
     let resp: Vec<_> = logs
         .iter()
         .map(|(&id, v)| wred_server::LogEntryPartial {
             id,
             addr: v.addr,
             last_updated: v.last_updated,
-            is_saved: data.config.log_dir.join(format!("{}.log", id)).exists(),
+            is_saved: data
+                .config
+                .log_dir
+                .join(format!("{}.log", id))
+                .try_exists()
+                .unwrap_or_default(),
         })
         .collect();
     postcard::to_allocvec(&resp).map_or_else(
@@ -32,7 +36,7 @@ async fn get_log(
     let logs = data.logs.lock().unwrap();
     logs.get(&id).map_or_else(
         || HttpResponse::NotFound().finish(),
-        |v| HttpResponse::Ok().body(postcard::to_allocvec(&v).unwrap()),
+        |v| HttpResponse::Ok().body(postcard::to_allocvec(&v.data).unwrap()),
     )
 }
 
