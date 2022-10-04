@@ -17,12 +17,13 @@ pub async fn start_log_receiver(state: web::Data<crate::state::AppState>) {
             let log_entries = state.logs.clone();
 
             tokio::spawn(async move {
-                tokio::time::timeout(std::time::Duration::from_secs(30), stream.readable())
-                    .await
-                    .unwrap()
-                    .unwrap();
                 let mut buf = Vec::new();
                 let e: std::io::Result<()> = loop {
+                    tokio::time::timeout(std::time::Duration::from_secs(15), stream.readable())
+                        .await
+                        .unwrap()
+                        .unwrap();
+
                     match stream.try_read_buf(&mut buf) {
                         Ok(0) => break Ok(()),
                         Ok(_) => {
