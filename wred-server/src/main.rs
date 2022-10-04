@@ -15,7 +15,7 @@ mod log_service;
 mod routes;
 mod state;
 
-#[tokio::main]
+#[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let mut f = tokio::fs::File::open("./config.ron")
         .await
