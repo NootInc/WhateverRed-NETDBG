@@ -12,9 +12,11 @@ pub struct WRedNetDbgApp {
     base_url: String,
     secret: String,
     #[serde(skip)]
-    pub log_cache: HashMap<u64, Promise<Result<wred_server::LogEntry, String>>>,
+    log_cache: HashMap<u64, Promise<Result<wred_server::LogEntry, String>>>,
     #[serde(skip)]
-    pub log_cache_ents: Option<Promise<Result<Vec<wred_server::LogEntryPartial>, String>>>,
+    log_cache_ents: Option<Promise<Result<Vec<wred_server::LogEntryPartial>, String>>>,
+    #[serde(skip)]
+    formatter: timeago::Formatter,
 }
 
 impl Default for WRedNetDbgApp {
@@ -35,6 +37,7 @@ impl Default for WRedNetDbgApp {
             secret: String::new(),
             log_cache: HashMap::default(),
             log_cache_ents: None,
+            formatter: timeago::Formatter::with_language(timeago::English),
         }
     }
 }
@@ -162,28 +165,35 @@ impl eframe::App for WRedNetDbgApp {
                                             },
                                         );
                                         let props = wred_server::get_id_props();
-                                        let ms = sequence_generator::decode_id_unix_epoch_micros(
-                                            ent.id, &props,
-                                        );
-                                        let d = std::time::UNIX_EPOCH
-                                            + std::time::Duration::from_micros(ms);
-                                        let localtime = chrono::DateTime::<chrono::Local>::from(d);
-                                        let fmter =
-                                            timeago::Formatter::with_language(timeago::English);
-                                        let now = chrono::Local::now();
-                                        ui.label(
-                                            RichText::new(fmter.convert_chrono(localtime, now))
-                                                .weak(),
-                                        );
-                                        let d = std::time::UNIX_EPOCH
-                                            + std::time::Duration::from_micros(ent.last_updated);
-                                        let localtime = chrono::DateTime::<chrono::Local>::from(d);
+
+                                        #[cfg(not(target_arch = "wasm32"))]
+                                        #[allow(clippy::cast_possible_truncation)]
+                                        let cur = std::time::SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .unwrap()
+                                            .as_micros()
+                                            as u64;
+                                        #[cfg(target_arch = "wasm32")]
+                                        #[allow(clippy::cast_possible_truncation)]
+                                        let cur =
+                                            (js_sys::Date::new_0().get_time() * 1000.0) as u64;
+                                        let micros =
+                                            sequence_generator::decode_id_unix_epoch_micros(
+                                                ent.id, &props,
+                                            );
+                                        let d = cur - micros;
+                                        let text = self
+                                            .formatter
+                                            .convert(std::time::Duration::from_micros(d));
+                                        ui.label(RichText::new(text).weak());
+
+                                        let d = cur - ent.last_updated;
                                         ui.separator();
                                         ui.label(RichText::new("updated").weak());
-                                        ui.label(
-                                            RichText::new(fmter.convert_chrono(localtime, now))
-                                                .weak(),
-                                        );
+                                        let text = self
+                                            .formatter
+                                            .convert(std::time::Duration::from_micros(d));
+                                        ui.label(RichText::new(text).weak());
                                     });
                                     ui.with_layout(
                                         Layout::right_to_left(egui::Align::Center),
