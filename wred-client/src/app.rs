@@ -7,12 +7,32 @@ use egui::{
 use poll_promise::Promise;
 use sequence_generator::sequence_generator;
 
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+pub enum SortBy {
+    CreationDate,
+    IPAddress,
+    LastUpdated,
+}
+
+impl ToString for SortBy {
+    fn to_string(&self) -> String {
+        match self {
+            Self::IPAddress => "IP Address",
+            Self::CreationDate => "Creation Date",
+            Self::LastUpdated => "Last Updated",
+        }
+        .to_owned()
+    }
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct WRedNetDbgApp {
     base_url: String,
     secret: String,
     show_ips: bool,
     show_base: bool,
+    sort_by: SortBy,
+    sort_ascending: bool,
     #[serde(skip)]
     log_cache: HashMap<u64, Promise<Result<String, String>>>,
     #[serde(skip)]
@@ -37,6 +57,8 @@ impl Default for WRedNetDbgApp {
             secret: String::new(),
             show_ips: true,
             show_base: false,
+            sort_by: SortBy::CreationDate,
+            sort_ascending: false,
             log_cache: HashMap::default(),
             log_cache_ents: None,
             formatter: timeago::Formatter::with_language(timeago::English),
@@ -63,19 +85,21 @@ impl eframe::App for WRedNetDbgApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+        egui::TopBottomPanel::top("menubar").show(ctx, |ui| {
             ui.set_min_height(25.0);
 
             ui.centered_and_justified(|ui| {
                 egui::menu::bar(ui, |ui| {
                     #[cfg(target_os = "macos")]
                     ui.add_space(60.0);
+
                     ui.add(
                         TextEdit::singleline(&mut self.secret)
                             .desired_width(150.0)
                             .password(true)
                             .hint_text("Admin Secret"),
                     );
+
                     ui.add(
                         TextEdit::singleline(&mut self.base_url)
                             .desired_width(150.0)
@@ -85,12 +109,41 @@ impl eframe::App for WRedNetDbgApp {
                     ui.toggle_value(&mut self.show_base, "\u{1F441}");
 
                     ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button("\u{1F504}").clicked() {
+                        if ui.button("\u{1F504} Refresh").clicked() {
                             self.log_cache.clear();
                             self.log_cache_ents = None;
                         }
-                        ui.checkbox(&mut self.show_ips, "IPs shown");
+
                         ui.separator();
+
+                        ui.checkbox(&mut self.show_ips, "IPs shown");
+
+                        ui.separator();
+
+                        ui.toggle_value(&mut self.sort_ascending, "\u{2B06}");
+                        ComboBox::from_id_source("sort_by")
+                            .selected_text(self.sort_by.to_string())
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(
+                                    &mut self.sort_by,
+                                    SortBy::CreationDate,
+                                    SortBy::CreationDate.to_string(),
+                                );
+                                ui.selectable_value(
+                                    &mut self.sort_by,
+                                    SortBy::IPAddress,
+                                    SortBy::IPAddress.to_string(),
+                                );
+                                ui.selectable_value(
+                                    &mut self.sort_by,
+                                    SortBy::LastUpdated,
+                                    SortBy::LastUpdated.to_string(),
+                                );
+                            });
+                        ui.label("Sort by");
+
+                        ui.separator();
+
                         ui.label(RichText::new("NETDBG").small().monospace());
                         ui.label("WhateverRed");
                     });
@@ -122,6 +175,30 @@ impl eframe::App for WRedNetDbgApp {
                 Some(Ok(ents)) => {
                     ui.set_width(ui.available_width());
 
+                    let mut ents = ents.iter().collect::<Vec<_>>();
+                    ents.sort_by(|a, b| match self.sort_by {
+                        SortBy::CreationDate => {
+                            if self.sort_ascending {
+                                a.id.cmp(&b.id)
+                            } else {
+                                b.id.cmp(&a.id)
+                            }
+                        }
+                        SortBy::IPAddress => {
+                            if self.sort_ascending {
+                                a.addr.ip().cmp(&b.addr.ip())
+                            } else {
+                                b.addr.ip().cmp(&a.addr.ip())
+                            }
+                        }
+                        SortBy::LastUpdated => {
+                            if self.sort_ascending {
+                                a.last_updated.cmp(&b.last_updated)
+                            } else {
+                                b.last_updated.cmp(&a.last_updated)
+                            }
+                        }
+                    });
                     for ent in ents {
                         let cached_promise = self.log_cache.entry(ent.id).or_insert_with(|| {
                             let ctx = ctx.clone();
@@ -197,7 +274,7 @@ impl eframe::App for WRedNetDbgApp {
                                                 let _e = ui.button("\u{1F5D9}");
                                             }
                                             Some(Ok(ent_full)) => {
-                                                if ui.button("\u{2B8B} Save").clicked() {
+                                                if ui.button("\u{2B07} Save").clicked() {
                                                     ui.output().copied_text = ent_full.clone();
                                                 }
                                                 if ui.button("\u{1F5D0} Copy").clicked() {
