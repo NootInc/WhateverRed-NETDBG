@@ -14,7 +14,6 @@ mod style;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
-    tracing_subscriber::fmt::init();
     eframe::run_native(
         "WhateverRed NETDBG",
         eframe::NativeOptions {
@@ -28,7 +27,6 @@ fn main() {
 #[cfg(target_arch = "wasm32")]
 fn main() {
     console_error_panic_hook::set_once();
-    tracing_wasm::set_as_global_default();
     eframe::start_web(
         "main_canvas",
         eframe::WebOptions::default(),
