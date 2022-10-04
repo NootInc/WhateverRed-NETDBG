@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use egui::{
-    collapsing_header::CollapsingState, Button, CentralPanel, Color32, Frame, Label, Layout,
-    RichText, ScrollArea, Sense, TextEdit,
+    collapsing_header::CollapsingState, Button, CentralPanel, Color32, ComboBox, Frame, Label,
+    Layout, RichText, ScrollArea, Sense, TextEdit,
 };
 use poll_promise::Promise;
 use sequence_generator::sequence_generator;
@@ -11,6 +11,8 @@ use sequence_generator::sequence_generator;
 pub struct WRedNetDbgApp {
     base_url: String,
     secret: String,
+    show_ips: bool,
+    show_base: bool,
     #[serde(skip)]
     log_cache: HashMap<u64, Promise<Result<String, String>>>,
     #[serde(skip)]
@@ -33,6 +35,8 @@ impl Default for WRedNetDbgApp {
         Self {
             base_url,
             secret: String::new(),
+            show_ips: true,
+            show_base: false,
             log_cache: HashMap::default(),
             log_cache_ents: None,
             formatter: timeago::Formatter::with_language(timeago::English),
@@ -68,21 +72,24 @@ impl eframe::App for WRedNetDbgApp {
                     ui.add_space(60.0);
                     ui.add(
                         TextEdit::singleline(&mut self.secret)
-                            .id_source("admin_secret")
+                            .desired_width(150.0)
                             .password(true)
                             .hint_text("Admin Secret"),
                     );
                     ui.add(
                         TextEdit::singleline(&mut self.base_url)
-                            .id_source("base_url")
+                            .desired_width(150.0)
+                            .password(!self.show_base)
                             .hint_text("Base URL"),
                     );
+                    ui.toggle_value(&mut self.show_base, "\u{1F441}");
 
                     ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button("\u{1F504}").clicked() {
                             self.log_cache.clear();
                             self.log_cache_ents = None;
                         }
+                        ui.checkbox(&mut self.show_ips, "IPs shown");
                         ui.separator();
                         ui.label(RichText::new("NETDBG").small().monospace());
                         ui.label("WhateverRed");
@@ -139,13 +146,20 @@ impl eframe::App for WRedNetDbgApp {
                             )
                             .show_header(ui, |ui| {
                                 egui::menu::bar(ui, |ui| {
-                                    ui.add(Label::new(ent.addr.to_string()).sense(Sense::click()))
-                                        .context_menu(|ui| {
-                                            if ui.button("\u{1F5D0} Copy IP").clicked() {
-                                                ui.output().copied_text = ent.addr.to_string();
-                                                ui.close_menu();
-                                            }
-                                        });
+                                    ui.add(
+                                        Label::new(if self.show_ips {
+                                            ent.addr.to_string()
+                                        } else {
+                                            "IP Hidden".to_owned()
+                                        })
+                                        .sense(Sense::click()),
+                                    )
+                                    .context_menu(|ui| {
+                                        if ui.button("\u{1F5D0} Copy IP").clicked() {
+                                            ui.output().copied_text = ent.addr.to_string();
+                                            ui.close_menu();
+                                        }
+                                    });
                                     let props = wred_server::get_id_props();
 
                                     #[cfg(not(target_arch = "wasm32"))]
