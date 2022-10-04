@@ -44,7 +44,7 @@ async fn main() -> std::io::Result<()> {
     }
 
     let bind = (state.config.ip.clone(), state.config.api_port);
-    log_service::start_log_receiver(state.clone());
+    log_service::start_log_receiver(state.clone()).await;
 
     HttpServer::new(move || {
         App::new()
