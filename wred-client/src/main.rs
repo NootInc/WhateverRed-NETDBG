@@ -15,7 +15,7 @@ mod style;
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     eframe::run_native(
-        "WhateverRed NETDBG",
+        "WhateverRed NetDbg",
         eframe::NativeOptions {
             fullsize_content: true,
             ..Default::default()
