@@ -206,9 +206,8 @@ impl eframe::App for WRedNetDbgApp {
                             let request =
                                 ehttp::Request::get(format!("{}/{}", self.base_url, ent.id));
                             ehttp::fetch(request, move |response| {
-                                let ent = response.and_then(|v| {
-                                    postcard::from_bytes(&v.bytes).map_err(|e| e.to_string())
-                                });
+                                let ent = response
+                                    .map(|v| String::from_utf8_lossy(&v.bytes).into_owned());
                                 sender.send(ent);
                                 ctx.request_repaint();
                             });
@@ -274,11 +273,11 @@ impl eframe::App for WRedNetDbgApp {
                                                 let _e = ui.button("\u{1F5D9}");
                                             }
                                             Some(Ok(ent_full)) => {
-                                                if ui.button("\u{1F5B9} View Raw").clicked() {
+                                                if ui.button("\u{1F5B9} Open URL").clicked() {
                                                     ui.output().open_url =
                                                         Some(egui::output::OpenUrl {
                                                             url: format!(
-                                                                "{}/{}.txt",
+                                                                "{}/{}",
                                                                 self.base_url, ent.id
                                                             ),
                                                             new_tab: true,

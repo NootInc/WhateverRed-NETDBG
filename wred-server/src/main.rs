@@ -51,7 +51,6 @@ async fn main() -> std::io::Result<()> {
             .app_data(state.clone())
             .service(routes::get_logs)
             .service(routes::get_log)
-            .service(routes::get_log_raw)
             .service(routes::delete_log)
             .service(routes::save_log)
             .service(actix_files::Files::new("/", "./dist").index_file("index.html"))
