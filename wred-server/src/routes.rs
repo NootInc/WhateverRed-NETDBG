@@ -1,4 +1,4 @@
-use actix_web::{delete, get, post, web, HttpResponse, Responder};
+use actix_web::{delete, get, http::header::ContentType, post, web, HttpResponse, Responder};
 
 #[get("/all")]
 #[allow(clippy::unused_async)]
@@ -37,6 +37,25 @@ async fn get_log(
     logs.get(&id).map_or_else(
         || HttpResponse::NotFound().finish(),
         |v| HttpResponse::Ok().body(postcard::to_allocvec(&v.data).unwrap()),
+    )
+}
+
+#[get("/{id:[[:digit:]]+}.txt")]
+#[allow(clippy::unused_async)]
+async fn get_log_raw(
+    path: web::Path<String>,
+    data: web::Data<super::state::AppState>,
+) -> impl Responder {
+    let id: u64 = path.into_inner().parse().unwrap();
+    let data = data.into_inner();
+    let logs = data.logs.lock().unwrap();
+    logs.get(&id).map_or_else(
+        || HttpResponse::NotFound().finish(),
+        |v| {
+            HttpResponse::Ok()
+                .content_type(ContentType::plaintext())
+                .body(v.data.clone())
+        },
     )
 }
 

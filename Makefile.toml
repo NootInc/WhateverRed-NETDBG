@@ -1,7 +1,3 @@
-[tasks.clean-dist]
-command = "rm"
-args = ["-rf", "dist"]
-
 [tasks.make-dist]
 install_crate = "trunk"
 command = "trunk"
@@ -17,12 +13,12 @@ args = ["build", "-d", "../dist", "--release"]
 [tasks.serve]
 command = "cargo"
 args = ["run", "--bin", "wred-server"]
-dependencies = ["clean-dist", "make-dist"]
+dependencies = ["make-dist"]
 
 [tasks.serve-release]
 command = "cargo"
 args = ["run", "--bin", "wred-server", "--release"]
-dependencies = ["clean-dist", "make-dist-release"]
+dependencies = ["make-dist-release"]
 
 [config]
 default_to_workspace = false

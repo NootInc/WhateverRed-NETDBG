@@ -274,8 +274,15 @@ impl eframe::App for WRedNetDbgApp {
                                                 let _e = ui.button("\u{1F5D9}");
                                             }
                                             Some(Ok(ent_full)) => {
-                                                if ui.button("\u{2B07} Save").clicked() {
-                                                    ui.output().copied_text = ent_full.clone();
+                                                if ui.button("\u{1F5B9} View Raw").clicked() {
+                                                    ui.output().open_url =
+                                                        Some(egui::output::OpenUrl {
+                                                            url: format!(
+                                                                "{}/{}.txt",
+                                                                self.base_url, ent.id
+                                                            ),
+                                                            new_tab: true,
+                                                        });
                                                 }
                                                 if ui.button("\u{1F5D0} Copy").clicked() {
                                                     ui.output().copied_text = ent_full.clone();
