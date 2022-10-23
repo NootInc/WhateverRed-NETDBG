@@ -19,7 +19,7 @@ egui = { git = "https://github.com/emilk/egui", version = "0.19.0", features = [
     "persistence",
     "tracing",
 ] }
-serde = { version = "1.0.145", features = ["derive"] }
+serde = { version = "1.0.147", features = ["derive"] }
 postcard = { version = "1.0.2", default-features = false, features = [
     "use-std",
 ] }
