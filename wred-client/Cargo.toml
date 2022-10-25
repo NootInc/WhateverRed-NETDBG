@@ -25,7 +25,7 @@ postcard = { version = "1.0.2", default-features = false, features = [
 ] }
 sequence-generator-rust = "0.3.1"
 wred-server = { path = "../wred-server", default-features = false }
-poll-promise = "0.1.0"
+poll-promise = "0.2.0"
 ehttp = { git = "https://github.com/emilk/ehttp", version = "0.2.0" }
 timeago = { version = "0.3.1", default-features = false }
 
