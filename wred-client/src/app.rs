@@ -351,7 +351,7 @@ impl eframe::App for WRedNetDbgApp {
                                                     );
                                                     ehttp::fetch(request, move |response| {
                                                         if let Err(e) = response {
-                                                            eprintln!("Error: {}", e);
+                                                            eprintln!("Error: {e}");
                                                         }
                                                         ctx.request_repaint();
                                                     });

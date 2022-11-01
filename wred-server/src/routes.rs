@@ -14,13 +14,13 @@ async fn get_logs(data: web::Data<super::state::AppState>) -> impl Responder {
             is_saved: data
                 .config
                 .log_dir
-                .join(format!("{}.log", id))
+                .join(format!("{id}.log"))
                 .try_exists()
                 .unwrap_or_default(),
         })
         .collect();
     postcard::to_allocvec(&resp).map_or_else(
-        |e| HttpResponse::InternalServerError().body(format!("Failed to serialise: {}", e)),
+        |e| HttpResponse::InternalServerError().body(format!("Failed to serialise: {e}")),
         |v| HttpResponse::Ok().body(v),
     )
 }
@@ -59,7 +59,7 @@ async fn delete_log(
         if data.logs.lock().unwrap().remove(&id).is_none() {
             Ok(HttpResponse::NotFound().finish())
         } else {
-            let path = data.config.log_dir.join(format!("{}.log", id));
+            let path = data.config.log_dir.join(format!("{id}.log"));
             if path.exists() {
                 tokio::fs::remove_file(path).await?;
             }
