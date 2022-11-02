@@ -25,12 +25,20 @@ fn main() {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn main() {
+use eframe::wasm_bindgen::{self, prelude::*};
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(start)]
+pub async fn start() -> Result<(), eframe::wasm_bindgen::JsValue> {
     console_error_panic_hook::set_once();
     eframe::start_web(
         "main_canvas",
         eframe::WebOptions::default(),
         Box::new(|cc| Box::new(app::WRedNetDbgApp::new(cc))),
     )
-    .expect("Failed to start eframe");
+    .await?;
+    Ok(())
 }
+
+#[cfg(target_arch = "wasm32")]
+fn main() {}
