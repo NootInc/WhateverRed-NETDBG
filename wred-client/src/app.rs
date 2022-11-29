@@ -109,9 +109,34 @@ impl eframe::App for WRedNetDbgApp {
                     ui.toggle_value(&mut self.show_base, "\u{1F441}");
 
                     ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button("\u{1F504} Refresh").clicked() {
+                        if ui.button("\u{1F504}").clicked() {
                             self.log_cache.clear();
                             self.log_cache_ents = None;
+                        }
+
+                        if ui.button("Discard unsaved").clicked() {
+                            if let Some(ents) = &self.log_cache_ents {
+                                if let Some(Ok(ents)) = ents.ready() {
+                                    for ent in ents.iter().filter(|v| !v.is_saved) {
+                                        self.log_cache.remove(&ent.id);
+                                        let ctx = ctx.clone();
+                                        ehttp::fetch(
+                                            ehttp::Request {
+                                                method: "DELETE".to_owned(),
+                                                url: format!("{}/{}", self.base_url, ent.id),
+                                                body: postcard::to_allocvec(&self.secret).unwrap(),
+                                                ..ehttp::Request::get("")
+                                            },
+                                            move |response| {
+                                                if let Err(e) = response {
+                                                    eprintln!("Error: {e}");
+                                                }
+                                                ctx.request_repaint();
+                                            },
+                                        );
+                                    }
+                                }
+                            }
                         }
 
                         ui.separator();
