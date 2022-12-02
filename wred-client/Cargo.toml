@@ -29,7 +29,7 @@ postcard = { version = "1.0.2", default-features = false, features = [
     "use-std",
 ] }
 sequence-generator-rust = "0.3.1"
-serde = { version = "1.0.147", features = ["derive"] }
+serde = { version = "1.0.148", features = ["derive"] }
 timeago = { version = "0.3.1", default-features = false }
 wred-server = { path = "../wred-server", default-features = false }
 
