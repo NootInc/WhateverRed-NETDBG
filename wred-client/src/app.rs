@@ -343,10 +343,7 @@ impl eframe::App for WRedNetDbgApp {
                                                                     },
                                                                     move |response| {
                                                                         if let Err(e) = response {
-                                                                            eprintln!(
-                                                                                "Error: {}",
-                                                                                e
-                                                                            );
+                                                                            eprintln!("Error: {e}");
                                                                         }
                                                                         ctx.request_repaint();
                                                                     },

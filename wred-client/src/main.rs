@@ -1,13 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-#![warn(
+#![deny(
     warnings,
-    clippy::pedantic,
-    clippy::nursery,
     clippy::cargo,
+    clippy::nursery,
     unused_extern_crates,
     rust_2021_compatibility
 )]
-#![allow(clippy::module_name_repetitions, clippy::too_many_lines)]
 
 mod app;
 mod style;
