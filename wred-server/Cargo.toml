@@ -20,5 +20,5 @@ postcard = { version = "1.0.2", optional = true, default-features = false, featu
 ] }
 ron = { version = "0.8.0", optional = true }
 sequence-generator-rust = "0.3.1"
-serde = { version = "1.0.148", features = ["derive"] }
-tokio = { version = "1.22.0", optional = true, features = ["fs", "rt"] }
+serde = { version = "1.0.149", features = ["derive"] }
+tokio = { version = "1.23.0", optional = true, features = ["fs", "rt"] }

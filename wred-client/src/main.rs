@@ -17,6 +17,7 @@ fn main() {
     eframe::run_native(
         "WhateverRed NetDbg",
         eframe::NativeOptions {
+            #[cfg(target_os = "macos")]
             fullsize_content: true,
             ..Default::default()
         },
