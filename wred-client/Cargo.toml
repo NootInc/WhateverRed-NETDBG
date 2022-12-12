@@ -27,7 +27,7 @@ postcard = { version = "1.0.2", default-features = false, features = [
 ] }
 sequence-generator-rust = "0.3.1"
 serde = { version = "1.0.149", features = ["derive"] }
-timeago = { version = "0.3.1", default-features = false }
+timeago = { version = "0.4.0", default-features = false }
 wred-server = { path = "../wred-server", default-features = false }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
