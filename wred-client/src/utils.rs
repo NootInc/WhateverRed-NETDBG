@@ -1,4 +1,3 @@
-#[cfg(not(target_arch = "wasm32"))]
 pub fn cur_micros() -> u64 {
     cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
