@@ -16,12 +16,15 @@
     <style>
         html {
             touch-action: manipulation;
-            background-color: #909090;
+        }
+
+        body {
+            background: #909090;
         }
 
         @media (prefers-color-scheme: dark) {
-            html {
-                background-color: #202020;
+            body {
+                background: #404040;
             }
         }
 
@@ -58,6 +61,8 @@
             text-align: center;
         }
 
+        /* ---------------------------------------------- */
+        /* Loading animation from https://loading.io/css/ */
         .lds-dual-ring {
             display: inline-block;
             width: 24px;
