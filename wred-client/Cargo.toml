@@ -20,7 +20,7 @@ eframe = { version = "0.20.1", default-features = false, features = [
     "wgpu",
 ] }
 egui = { version = "0.20.1", features = ["persistence", "tracing"] }
-ehttp = { git = "https://github.com/emilk/ehttp", version = "0.2.0" }
+ehttp = "0.2.0"
 poll-promise = "0.2.0"
 postcard = { version = "1.0.2", default-features = false, features = [
     "use-std",
