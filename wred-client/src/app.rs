@@ -140,14 +140,14 @@ impl eframe::App for WRedNetDbgApp {
             });
         });
 
-        let cached_promise = self.log_cache_ents.get_or_insert_with(|| {
+        let log_cache_ents = self.log_cache_ents.get_or_insert_with(|| {
             let (sender, promise) = Promise::new();
             crate::requests::get_logs(&self.base_url, sender, ctx.clone());
             promise
         });
 
         CentralPanel::default().show(ctx, |ui| {
-            ScrollArea::vertical().show(ui, |ui| match cached_promise.ready() {
+            ScrollArea::vertical().show(ui, |ui| match log_cache_ents.ready() {
                 None => {
                     ui.spinner();
                 }
