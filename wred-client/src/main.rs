@@ -7,8 +7,12 @@
     rust_2021_compatibility
 )]
 
+#[macro_use]
+extern crate cfg_if;
+
 mod app;
 mod style;
+mod utils;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {

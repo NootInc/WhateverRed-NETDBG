@@ -6,8 +6,9 @@ use egui::{
 };
 use poll_promise::Promise;
 use sequence_generator::sequence_generator;
+use serde::{Deserialize, Serialize};
 
-#[derive(serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Copy, Clone, PartialEq, Eq)]
 pub enum SortBy {
     CreationDate,
     IPAddress,
@@ -25,7 +26,7 @@ impl ToString for SortBy {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct WRedNetDbgApp {
     base_url: String,
     secret: String,
@@ -43,17 +44,8 @@ pub struct WRedNetDbgApp {
 
 impl Default for WRedNetDbgApp {
     fn default() -> Self {
-        #[cfg(target_arch = "wasm32")]
-        let base_url = web_sys::window()
-            .and_then(|v| v.document())
-            .and_then(|v| v.location())
-            .and_then(|v| Some(v.origin()))
-            .unwrap()
-            .unwrap();
-        #[cfg(not(target_arch = "wasm32"))]
-        let base_url = "http://localhost:8080".to_string();
         Self {
-            base_url,
+            base_url: crate::utils::base_url(),
             secret: String::new(),
             show_ips: true,
             show_base: false,
@@ -70,12 +62,9 @@ impl WRedNetDbgApp {
     #[must_use]
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         cc.egui_ctx.set_fonts(crate::style::get_fonts());
-
-        if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
-        }
-
-        Self::default()
+        cc.storage.map_or_else(Self::default, |storage| {
+            eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
+        })
     }
 }
 
@@ -85,8 +74,8 @@ impl eframe::App for WRedNetDbgApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("menubar").show(ctx, |ui| {
-            ui.set_min_height(25.0);
+        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+            ui.set_height(25.0);
 
             ui.centered_and_justified(|ui| {
                 egui::menu::bar(ui, |ui| {
@@ -149,28 +138,13 @@ impl eframe::App for WRedNetDbgApp {
                         ComboBox::from_id_source("sort_by")
                             .selected_text(self.sort_by.to_string())
                             .show_ui(ui, |ui| {
-                                ui.selectable_value(
-                                    &mut self.sort_by,
-                                    SortBy::CreationDate,
-                                    SortBy::CreationDate.to_string(),
-                                );
-                                ui.selectable_value(
-                                    &mut self.sort_by,
-                                    SortBy::IPAddress,
-                                    SortBy::IPAddress.to_string(),
-                                );
-                                ui.selectable_value(
-                                    &mut self.sort_by,
-                                    SortBy::LastUpdated,
-                                    SortBy::LastUpdated.to_string(),
-                                );
+                                for v in
+                                    [SortBy::CreationDate, SortBy::IPAddress, SortBy::LastUpdated]
+                                {
+                                    ui.selectable_value(&mut self.sort_by, v, v.to_string());
+                                }
                             });
                         ui.label("Sort by");
-
-                        ui.separator();
-
-                        ui.label(RichText::new("NETDBG").small().monospace());
-                        ui.label("WhateverRed");
                     });
                 });
             });
@@ -198,8 +172,6 @@ impl eframe::App for WRedNetDbgApp {
                     ui.colored_label(Color32::RED, RichText::new(e));
                 }
                 Some(Ok(ents)) => {
-                    ui.set_width(ui.available_width());
-
                     let mut ents = ents.iter().collect::<Vec<_>>();
                     ents.sort_by(|a, b| match self.sort_by {
                         SortBy::CreationDate => {
@@ -238,8 +210,8 @@ impl eframe::App for WRedNetDbgApp {
                             });
                             promise
                         });
-                        Frame::group(&ctx.style()).show(ui, |ui| {
-                            ui.set_width(ui.available_width());
+
+                        Frame::group(ui.style()).show(ui, |ui| {
                             CollapsingState::load_with_default_open(
                                 ctx,
                                 ui.make_persistent_id(ent.id),
@@ -261,167 +233,156 @@ impl eframe::App for WRedNetDbgApp {
                                             ui.close_menu();
                                         }
                                     });
-                                    let props = wred_server::get_id_props();
 
-                                    #[cfg(not(target_arch = "wasm32"))]
-                                    #[allow(clippy::cast_possible_truncation)]
-                                    let cur = std::time::SystemTime::now()
-                                        .duration_since(std::time::UNIX_EPOCH)
-                                        .unwrap()
-                                        .as_micros()
-                                        as u64;
-                                    #[cfg(target_arch = "wasm32")]
-                                    #[allow(clippy::cast_possible_truncation)]
-                                    let cur = (js_sys::Date::new_0().get_time() * 1000.0) as u64;
+                                    let props = wred_server::get_id_props();
+                                    let cur_micros = crate::utils::cur_micros();
                                     let micros = sequence_generator::decode_id_unix_epoch_micros(
                                         ent.id, &props,
                                     );
-                                    let d = cur - micros;
-                                    let text =
-                                        self.formatter.convert(std::time::Duration::from_micros(d));
-                                    ui.label(RichText::new(text).weak());
+                                    ui.label(
+                                        RichText::new(self.formatter.convert(
+                                            std::time::Duration::from_micros(cur_micros - micros),
+                                        ))
+                                        .weak(),
+                                    );
 
-                                    let d = cur - ent.last_updated;
                                     ui.separator();
+
                                     ui.label(RichText::new("updated").weak());
-                                    let text =
-                                        self.formatter.convert(std::time::Duration::from_micros(d));
-                                    ui.label(RichText::new(text).weak());
+                                    ui.label(
+                                        RichText::new(self.formatter.convert(
+                                            std::time::Duration::from_micros(
+                                                cur_micros - ent.last_updated,
+                                            ),
+                                        ))
+                                        .weak(),
+                                    );
 
                                     ui.with_layout(
                                         Layout::right_to_left(egui::Align::Center),
-                                        |ui| match cached_promise.ready() {
-                                            None => {
-                                                ui.spinner();
-                                            }
-                                            Some(Err(_)) => {
-                                                let _e = ui.button("\u{1F5D9}");
-                                            }
-                                            Some(Ok(ent_full)) => {
-                                                if ui.button("\u{1F5B9} Open URL").clicked() {
-                                                    ui.output().open_url =
-                                                        Some(egui::output::OpenUrl {
-                                                            url: format!(
-                                                                "{}/{}",
-                                                                self.base_url, ent.id
-                                                            ),
-                                                            new_tab: true,
-                                                        });
+                                        |ui| {
+                                            match cached_promise.ready() {
+                                                None => {
+                                                    ui.spinner();
                                                 }
-                                                if ui.button("\u{1F5D0} Copy").clicked() {
-                                                    ui.output().copied_text = ent_full.clone();
+                                                Some(Err(_)) => {
+                                                    let _e = ui.button("\u{1F5D9}");
                                                 }
-                                                let resp = ui.add_enabled(
-                                                    !self.secret.is_empty(),
-                                                    Button::new("\u{274C} Discard"),
-                                                );
-                                                let id = resp.id.with("discard_confirmation");
-                                                egui::popup::popup_below_widget(
-                                                    ui,
-                                                    id,
-                                                    &resp,
-                                                    |ui| {
-                                                        ui.set_min_width(80.0);
-                                                        ui.label("Are you sure?");
-                                                        ui.horizontal(|ui| {
-                                                            if ui.button("Yes").clicked() {
-                                                                ui.memory().close_popup();
-                                                                let ctx = ctx.clone();
-                                                                ehttp::fetch(
-                                                                    ehttp::Request {
-                                                                        method: "DELETE".to_owned(),
-                                                                        url: format!(
-                                                                            "{}/{}",
-                                                                            self.base_url, ent.id
-                                                                        ),
-                                                                        body:
-                                                                            postcard::to_allocvec(
-                                                                                &self.secret,
-                                                                            )
-                                                                            .unwrap(),
-                                                                        ..ehttp::Request::get("")
-                                                                    },
-                                                                    move |response| {
-                                                                        if let Err(e) = response {
-                                                                            eprintln!("Error: {e}");
-                                                                        }
-                                                                        ctx.request_repaint();
-                                                                    },
-                                                                );
-                                                            }
-                                                            if ui.button("No").clicked() {
-                                                                ui.memory().close_popup();
-                                                            }
-                                                        });
-                                                    },
-                                                );
-                                                if resp.clicked() {
-                                                    ui.memory().open_popup(id);
-                                                }
-                                                let resp = ui.add_enabled(
-                                                    !self.secret.is_empty(),
-                                                    Button::new("\u{2705} Keep"),
-                                                );
-                                                let id = resp.id.with("keep_confirmation");
-
-                                                let save = || {
-                                                    let ctx = ctx.clone();
-                                                    let request = ehttp::Request::post(
-                                                        format!("{}/{}", self.base_url, ent.id),
-                                                        postcard::to_allocvec(&self.secret)
-                                                            .unwrap(),
-                                                    );
-                                                    ehttp::fetch(request, move |response| {
-                                                        if let Err(e) = response {
-                                                            eprintln!("Error: {e}");
-                                                        }
-                                                        ctx.request_repaint();
-                                                    });
-                                                };
-                                                egui::popup::popup_below_widget(
-                                                    ui,
-                                                    id,
-                                                    &resp,
-                                                    |ui| {
-                                                        ui.set_min_width(80.0);
-                                                        ui.label("Are you sure?");
-                                                        ui.horizontal(|ui| {
-                                                            if ui.button("Yes").clicked() {
-                                                                ui.memory().close_popup();
-                                                                save();
-                                                            }
-                                                            if ui.button("No").clicked() {
-                                                                ui.memory().close_popup();
-                                                            }
-                                                        });
-                                                    },
-                                                );
-                                                if resp.clicked() {
-                                                    if ent.is_saved {
-                                                        ui.memory().open_popup(id);
-                                                    } else {
-                                                        save();
+                                                Some(Ok(ent_full)) => {
+                                                    if ui.button("\u{1F5D0}").clicked() {
+                                                        ui.output().copied_text = ent_full.clone();
                                                     }
                                                 }
+                                            }
+
+                                            let resp = ui.add_enabled(
+                                                !self.secret.is_empty(),
+                                                Button::new("\u{274C}"),
+                                            );
+                                            let id = resp.id.with("discard_confirmation");
+                                            egui::popup::popup_below_widget(ui, id, &resp, |ui| {
+                                                ui.set_min_width(80.0);
+                                                ui.label("Are you sure?");
+                                                ui.horizontal(|ui| {
+                                                    if ui.button("Yes").clicked() {
+                                                        ui.memory().close_popup();
+                                                        let ctx = ctx.clone();
+                                                        ehttp::fetch(
+                                                            ehttp::Request {
+                                                                method: "DELETE".to_owned(),
+                                                                url: format!(
+                                                                    "{}/{}",
+                                                                    self.base_url, ent.id
+                                                                ),
+                                                                body: postcard::to_allocvec(
+                                                                    &self.secret,
+                                                                )
+                                                                .unwrap(),
+                                                                ..ehttp::Request::get("")
+                                                            },
+                                                            move |response| {
+                                                                if let Err(e) = response {
+                                                                    eprintln!("Error: {e}");
+                                                                }
+                                                                ctx.request_repaint();
+                                                            },
+                                                        );
+                                                    }
+                                                    if ui.button("No").clicked() {
+                                                        ui.memory().close_popup();
+                                                    }
+                                                });
+                                            });
+                                            if resp.clicked() {
+                                                ui.memory().open_popup(id);
+                                            }
+
+                                            let resp = ui.add_enabled(
+                                                !self.secret.is_empty(),
+                                                Button::new("\u{2705}"),
+                                            );
+                                            let id = resp.id.with("keep_confirmation");
+
+                                            let save = || {
+                                                let ctx = ctx.clone();
+                                                let request = ehttp::Request::post(
+                                                    format!("{}/{}", self.base_url, ent.id),
+                                                    postcard::to_allocvec(&self.secret).unwrap(),
+                                                );
+                                                ehttp::fetch(request, move |response| {
+                                                    if let Err(e) = response {
+                                                        eprintln!("Error: {e}");
+                                                    }
+                                                    ctx.request_repaint();
+                                                });
+                                            };
+                                            egui::popup::popup_below_widget(ui, id, &resp, |ui| {
+                                                ui.set_min_width(80.0);
+                                                ui.label("Are you sure?");
+                                                ui.horizontal(|ui| {
+                                                    if ui.button("Yes").clicked() {
+                                                        ui.memory().close_popup();
+                                                        save();
+                                                    }
+                                                    if ui.button("No").clicked() {
+                                                        ui.memory().close_popup();
+                                                    }
+                                                });
+                                            });
+                                            if resp.clicked() {
+                                                if ent.is_saved {
+                                                    ui.memory().open_popup(id);
+                                                } else {
+                                                    save();
+                                                }
+                                            }
+
+                                            if ui.button("\u{1F5B9} Open URL").clicked() {
+                                                ui.output().open_url =
+                                                    Some(egui::output::OpenUrl {
+                                                        url: format!(
+                                                            "{}/{}",
+                                                            self.base_url, ent.id
+                                                        ),
+                                                        new_tab: true,
+                                                    });
                                             }
                                         },
                                     );
                                 });
                             })
-                            .body(|ui| {
-                                ui.set_width(ui.available_width());
-
-                                match cached_promise.ready() {
-                                    None => {
-                                        ui.spinner();
-                                    }
-                                    Some(Err(e)) => {
-                                        ui.horizontal(|ui| {
-                                            ui.label(RichText::new("\u{1F5D9}"));
-                                            ui.label(e);
-                                        });
-                                    }
-                                    Some(Ok(ent)) => {
+                            .body(|ui| match cached_promise.ready() {
+                                None => {
+                                    ui.spinner();
+                                }
+                                Some(Err(e)) => {
+                                    ui.horizontal(|ui| {
+                                        ui.label(RichText::new("\u{1F5D9}"));
+                                        ui.label(e);
+                                    });
+                                }
+                                Some(Ok(ent)) => {
+                                    Frame::canvas(ui.style()).show(ui, |ui| {
                                         ui.add(
                                             TextEdit::multiline(&mut ent.trim())
                                                 .code_editor()
@@ -429,7 +390,7 @@ impl eframe::App for WRedNetDbgApp {
                                                 .desired_rows(1)
                                                 .hint_text("Nothing to see here"),
                                         );
-                                    }
+                                    });
                                 }
                             })
                             .0
