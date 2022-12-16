@@ -4,19 +4,19 @@ pub fn get_fonts() -> FontDefinitions {
     let mut fonts = egui::FontDefinitions::default();
     fonts.font_data.insert(
         "Helvetica".to_owned(),
-        egui::FontData::from_static(include_bytes!("assets/fonts/Helvetica.ttf")),
+        egui::FontData::from_static(include_bytes!("../assets/fonts/Helvetica.ttf")),
     );
     fonts.font_data.insert(
         "Iosevka NF".to_owned(),
-        egui::FontData::from_static(include_bytes!("assets/fonts/Iosevka NF.ttf")),
+        egui::FontData::from_static(include_bytes!("../assets/fonts/Iosevka NF.ttf")),
     );
     fonts.font_data.insert(
         "Symbol".to_owned(),
-        egui::FontData::from_static(include_bytes!("assets/fonts/Symbol.ttf")),
+        egui::FontData::from_static(include_bytes!("../assets/fonts/Symbol.ttf")),
     );
     fonts.font_data.insert(
         "Apple Symbols".to_owned(),
-        egui::FontData::from_static(include_bytes!("assets/fonts/Apple Symbols.ttf")),
+        egui::FontData::from_static(include_bytes!("../assets/fonts/Apple Symbols.ttf")),
     );
 
     let ent = fonts
