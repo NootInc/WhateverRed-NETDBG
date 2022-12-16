@@ -11,6 +11,7 @@
 extern crate cfg_if;
 
 mod app;
+mod requests;
 mod style;
 mod utils;
 

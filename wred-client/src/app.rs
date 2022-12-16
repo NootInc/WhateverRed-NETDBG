@@ -108,30 +108,20 @@ impl eframe::App for WRedNetDbgApp {
                                 if let Some(Ok(ents)) = ents.ready() {
                                     for ent in ents.iter().filter(|v| !v.is_saved) {
                                         self.log_cache.remove(&ent.id);
-                                        let ctx = ctx.clone();
-                                        ehttp::fetch(
-                                            ehttp::Request {
-                                                method: "DELETE".to_owned(),
-                                                url: format!("{}/{}", self.base_url, ent.id),
-                                                body: postcard::to_allocvec(&self.secret).unwrap(),
-                                                ..ehttp::Request::get("")
-                                            },
-                                            move |response| {
-                                                if let Err(e) = response {
-                                                    eprintln!("Error: {e}");
-                                                }
-                                                ctx.request_repaint();
-                                            },
+                                        crate::requests::delete_log(
+                                            &self.base_url,
+                                            ent.id,
+                                            &self.secret,
+                                            ctx.clone(),
                                         );
                                     }
                                 }
                             }
+                            self.log_cache_ents = None;
                         }
 
                         ui.separator();
-
                         ui.checkbox(&mut self.show_ips, "IPs shown");
-
                         ui.separator();
 
                         ui.toggle_value(&mut self.sort_ascending, "\u{2B06}");
@@ -151,15 +141,8 @@ impl eframe::App for WRedNetDbgApp {
         });
 
         let cached_promise = self.log_cache_ents.get_or_insert_with(|| {
-            let ctx = ctx.clone();
             let (sender, promise) = Promise::new();
-            let request = ehttp::Request::get(format!("{}/all", self.base_url));
-            ehttp::fetch(request, move |response| {
-                let ent = response
-                    .and_then(|v| postcard::from_bytes(&v.bytes).map_err(|e| e.to_string()));
-                sender.send(ent);
-                ctx.request_repaint();
-            });
+            crate::requests::get_logs(&self.base_url, sender, ctx.clone());
             promise
         });
 
@@ -198,16 +181,8 @@ impl eframe::App for WRedNetDbgApp {
                     });
                     for ent in ents {
                         let cached_promise = self.log_cache.entry(ent.id).or_insert_with(|| {
-                            let ctx = ctx.clone();
                             let (sender, promise) = Promise::new();
-                            let request =
-                                ehttp::Request::get(format!("{}/{}", self.base_url, ent.id));
-                            ehttp::fetch(request, move |response| {
-                                let ent = response
-                                    .map(|v| String::from_utf8_lossy(&v.bytes).into_owned());
-                                sender.send(ent);
-                                ctx.request_repaint();
-                            });
+                            crate::requests::get_log(&self.base_url, ent.id, sender, ctx.clone());
                             promise
                         });
 
@@ -286,26 +261,11 @@ impl eframe::App for WRedNetDbgApp {
                                                 ui.horizontal(|ui| {
                                                     if ui.button("Yes").clicked() {
                                                         ui.memory().close_popup();
-                                                        let ctx = ctx.clone();
-                                                        ehttp::fetch(
-                                                            ehttp::Request {
-                                                                method: "DELETE".to_owned(),
-                                                                url: format!(
-                                                                    "{}/{}",
-                                                                    self.base_url, ent.id
-                                                                ),
-                                                                body: postcard::to_allocvec(
-                                                                    &self.secret,
-                                                                )
-                                                                .unwrap(),
-                                                                ..ehttp::Request::get("")
-                                                            },
-                                                            move |response| {
-                                                                if let Err(e) = response {
-                                                                    eprintln!("Error: {e}");
-                                                                }
-                                                                ctx.request_repaint();
-                                                            },
+                                                        crate::requests::delete_log(
+                                                            &self.base_url,
+                                                            ent.id,
+                                                            &self.secret,
+                                                            ctx.clone(),
                                                         );
                                                     }
                                                     if ui.button("No").clicked() {
@@ -322,27 +282,18 @@ impl eframe::App for WRedNetDbgApp {
                                                 Button::new("\u{2705}"),
                                             );
                                             let id = resp.id.with("keep_confirmation");
-
-                                            let save = || {
-                                                let ctx = ctx.clone();
-                                                let request = ehttp::Request::post(
-                                                    format!("{}/{}", self.base_url, ent.id),
-                                                    postcard::to_allocvec(&self.secret).unwrap(),
-                                                );
-                                                ehttp::fetch(request, move |response| {
-                                                    if let Err(e) = response {
-                                                        eprintln!("Error: {e}");
-                                                    }
-                                                    ctx.request_repaint();
-                                                });
-                                            };
                                             egui::popup::popup_below_widget(ui, id, &resp, |ui| {
                                                 ui.set_min_width(80.0);
                                                 ui.label("Are you sure?");
                                                 ui.horizontal(|ui| {
                                                     if ui.button("Yes").clicked() {
                                                         ui.memory().close_popup();
-                                                        save();
+                                                        crate::requests::save_log(
+                                                            &self.base_url,
+                                                            ent.id,
+                                                            &self.secret,
+                                                            ctx.clone(),
+                                                        );
                                                     }
                                                     if ui.button("No").clicked() {
                                                         ui.memory().close_popup();
@@ -353,7 +304,12 @@ impl eframe::App for WRedNetDbgApp {
                                                 if ent.is_saved {
                                                     ui.memory().open_popup(id);
                                                 } else {
-                                                    save();
+                                                    crate::requests::save_log(
+                                                        &self.base_url,
+                                                        ent.id,
+                                                        &self.secret,
+                                                        ctx.clone(),
+                                                    );
                                                 }
                                             }
 
