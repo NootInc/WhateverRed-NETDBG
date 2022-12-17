@@ -104,17 +104,15 @@ impl eframe::App for WRedNetDbgApp {
                         }
 
                         if ui.button("Discard unsaved").clicked() {
-                            if let Some(ents) = &self.log_cache_ents {
-                                if let Some(Ok(ents)) = ents.ready() {
-                                    for ent in ents.iter().filter(|v| !v.is_saved) {
-                                        self.log_cache.remove(&ent.id);
-                                        crate::requests::delete_log(
-                                            &self.base_url,
-                                            ent.id,
-                                            &self.secret,
-                                            ctx.clone(),
-                                        );
-                                    }
+                            if let Some(Ok(ents)) = &self.log_cache_ents.and_then(|v| v.ready()) {
+                                for ent in ents.iter().filter(|v| !v.is_saved) {
+                                    self.log_cache.remove(&ent.id);
+                                    crate::requests::delete_log(
+                                        &self.base_url,
+                                        ent.id,
+                                        &self.secret,
+                                        ctx.clone(),
+                                    );
                                 }
                             }
                             self.log_cache_ents = None;
