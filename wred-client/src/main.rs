@@ -31,7 +31,7 @@ fn main() {
             });
         } else {
             eframe::run_native(
-                "WhateverRed NetDbg",
+                "com.ChefKissInc.WRedNetdbg",
                 eframe::NativeOptions {
                     #[cfg(target_os = "macos")]
                     fullsize_content: true,

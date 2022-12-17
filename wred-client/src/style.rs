@@ -28,5 +28,7 @@ pub fn get_fonts() -> FontDefinitions {
     ent.insert(0, "Iosevka NF".to_owned());
     ent.insert(1, "Symbol".to_owned());
     ent.insert(2, "Apple Symbols".to_owned());
+    ent.push("Helvetica".to_owned());
+
     fonts
 }
