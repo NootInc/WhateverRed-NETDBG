@@ -31,7 +31,7 @@ fn main() {
             });
         } else {
             eframe::run_native(
-                "com.ChefKissInc.WRedNetdbg",
+                "com.ChefKissInc.WRedNetDbgClient",
                 eframe::NativeOptions {
                     #[cfg(target_os = "macos")]
                     fullsize_content: true,
