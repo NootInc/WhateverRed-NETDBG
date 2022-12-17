@@ -104,7 +104,9 @@ impl eframe::App for WRedNetDbgApp {
                         }
 
                         if ui.button("Discard unsaved").clicked() {
-                            if let Some(Ok(ents)) = &self.log_cache_ents.and_then(|v| v.ready()) {
+                            if let Some(Ok(ents)) =
+                                self.log_cache_ents.as_ref().and_then(|v| v.ready())
+                            {
                                 for ent in ents.iter().filter(|v| !v.is_saved) {
                                     self.log_cache.remove(&ent.id);
                                     crate::requests::delete_log(
