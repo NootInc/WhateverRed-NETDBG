@@ -1,4 +1,6 @@
-pub fn delete_log(base_url: &str, id: u64, secret: &str, ctx: egui::Context) {
+use egui::Context;
+
+pub fn delete_log(base_url: &str, id: u64, secret: &str, ctx: Context) {
     ehttp::fetch(
         ehttp::Request {
             method: "DELETE".to_owned(),
@@ -16,7 +18,7 @@ pub fn delete_log(base_url: &str, id: u64, secret: &str, ctx: egui::Context) {
     );
 }
 
-pub fn save_log(base_url: &str, id: u64, secret: &str, ctx: egui::Context) {
+pub fn save_log(base_url: &str, id: u64, secret: &str, ctx: Context) {
     let request = ehttp::Request::post(
         format!("{base_url}/{id}"),
         postcard::to_allocvec(secret).unwrap(),
@@ -32,7 +34,7 @@ pub fn save_log(base_url: &str, id: u64, secret: &str, ctx: egui::Context) {
 pub fn get_logs(
     base_url: &str,
     sender: poll_promise::Sender<Result<Vec<wred_server::LogEntryPartial>, String>>,
-    ctx: egui::Context,
+    ctx: Context,
 ) {
     ehttp::fetch(
         ehttp::Request::get(format!("{base_url}/all")),
@@ -49,7 +51,7 @@ pub fn get_log(
     base_url: &str,
     id: u64,
     sender: poll_promise::Sender<Result<String, String>>,
-    ctx: egui::Context,
+    ctx: Context,
 ) {
     ehttp::fetch(
         ehttp::Request::get(format!("{base_url}/{id}")),

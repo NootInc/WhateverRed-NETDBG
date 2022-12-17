@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use egui::{
-    collapsing_header::CollapsingState, Button, CentralPanel, Color32, ComboBox, Frame, Label,
-    Layout, RichText, ScrollArea, Sense, TextEdit,
+    collapsing_header::CollapsingState, Align, Button, CentralPanel, Color32, ComboBox, Frame,
+    Label, Layout, RichText, ScrollArea, Sense, TextEdit, TopBottomPanel,
 };
 use poll_promise::Promise;
 use sequence_generator::sequence_generator;
@@ -74,7 +74,7 @@ impl eframe::App for WRedNetDbgApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+        TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             ui.set_height(25.0);
 
             ui.centered_and_justified(|ui| {
@@ -97,7 +97,7 @@ impl eframe::App for WRedNetDbgApp {
                     );
                     ui.toggle_value(&mut self.show_base, "\u{1F441}");
 
-                    ui.with_layout(Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ui.button("\u{1F504}").clicked() {
                             self.log_cache.clear();
                             self.log_cache_ents = None;
@@ -233,77 +233,59 @@ impl eframe::App for WRedNetDbgApp {
                                         .weak(),
                                     );
 
-                                    ui.with_layout(
-                                        Layout::right_to_left(egui::Align::Center),
-                                        |ui| {
-                                            match cached_promise.ready() {
-                                                None => {
-                                                    ui.spinner();
-                                                }
-                                                Some(Err(_)) => {
-                                                    let _e = ui.button("\u{1F5D9}");
-                                                }
-                                                Some(Ok(ent_full)) => {
-                                                    if ui.button("\u{1F5D0}").clicked() {
-                                                        ui.output().copied_text = ent_full.clone();
-                                                    }
+                                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                                        match cached_promise.ready() {
+                                            None => {
+                                                ui.spinner();
+                                            }
+                                            Some(Err(_)) => {
+                                                let _e = ui.button("\u{1F5D9}");
+                                            }
+                                            Some(Ok(ent_full)) => {
+                                                if ui.button("\u{1F5D0}").clicked() {
+                                                    ui.output().copied_text = ent_full.clone();
                                                 }
                                             }
+                                        }
 
-                                            let resp = ui.add_enabled(
-                                                !self.secret.is_empty(),
-                                                Button::new("\u{274C}"),
-                                            );
-                                            let id = resp.id.with("discard_confirmation");
-                                            egui::popup::popup_below_widget(ui, id, &resp, |ui| {
-                                                ui.set_min_width(80.0);
-                                                ui.label("Are you sure?");
-                                                ui.horizontal(|ui| {
-                                                    if ui.button("Yes").clicked() {
-                                                        ui.memory().close_popup();
-                                                        crate::requests::delete_log(
-                                                            &self.base_url,
-                                                            ent.id,
-                                                            &self.secret,
-                                                            ctx.clone(),
-                                                        );
-                                                    }
-                                                    if ui.button("No").clicked() {
-                                                        ui.memory().close_popup();
-                                                    }
-                                                });
+                                        let resp = ui.add_enabled(
+                                            !self.secret.is_empty(),
+                                            Button::new("\u{274C}"),
+                                        );
+                                        let id = resp.id.with("discard_confirmation");
+                                        egui::popup::popup_below_widget(ui, id, &resp, |ui| {
+                                            ui.set_min_width(80.0);
+                                            ui.label("Are you sure?");
+                                            ui.horizontal(|ui| {
+                                                if ui.button("Yes").clicked() {
+                                                    ui.memory().close_popup();
+                                                    crate::requests::delete_log(
+                                                        &self.base_url,
+                                                        ent.id,
+                                                        &self.secret,
+                                                        ctx.clone(),
+                                                    );
+                                                }
+                                                if ui.button("No").clicked() {
+                                                    ui.memory().close_popup();
+                                                }
                                             });
-                                            if resp.clicked() {
-                                                ui.memory().open_popup(id);
-                                            }
+                                        });
+                                        if resp.clicked() {
+                                            ui.memory().open_popup(id);
+                                        }
 
-                                            let resp = ui.add_enabled(
-                                                !self.secret.is_empty(),
-                                                Button::new("\u{2705}"),
-                                            );
-                                            let id = resp.id.with("keep_confirmation");
-                                            egui::popup::popup_below_widget(ui, id, &resp, |ui| {
-                                                ui.set_min_width(80.0);
-                                                ui.label("Are you sure?");
-                                                ui.horizontal(|ui| {
-                                                    if ui.button("Yes").clicked() {
-                                                        ui.memory().close_popup();
-                                                        crate::requests::save_log(
-                                                            &self.base_url,
-                                                            ent.id,
-                                                            &self.secret,
-                                                            ctx.clone(),
-                                                        );
-                                                    }
-                                                    if ui.button("No").clicked() {
-                                                        ui.memory().close_popup();
-                                                    }
-                                                });
-                                            });
-                                            if resp.clicked() {
-                                                if ent.is_saved {
-                                                    ui.memory().open_popup(id);
-                                                } else {
+                                        let resp = ui.add_enabled(
+                                            !self.secret.is_empty(),
+                                            Button::new("\u{2705}"),
+                                        );
+                                        let id = resp.id.with("keep_confirmation");
+                                        egui::popup::popup_below_widget(ui, id, &resp, |ui| {
+                                            ui.set_min_width(80.0);
+                                            ui.label("Are you sure?");
+                                            ui.horizontal(|ui| {
+                                                if ui.button("Yes").clicked() {
+                                                    ui.memory().close_popup();
                                                     crate::requests::save_log(
                                                         &self.base_url,
                                                         ent.id,
@@ -311,20 +293,31 @@ impl eframe::App for WRedNetDbgApp {
                                                         ctx.clone(),
                                                     );
                                                 }
+                                                if ui.button("No").clicked() {
+                                                    ui.memory().close_popup();
+                                                }
+                                            });
+                                        });
+                                        if resp.clicked() {
+                                            if ent.is_saved {
+                                                ui.memory().open_popup(id);
+                                            } else {
+                                                crate::requests::save_log(
+                                                    &self.base_url,
+                                                    ent.id,
+                                                    &self.secret,
+                                                    ctx.clone(),
+                                                );
                                             }
+                                        }
 
-                                            if ui.button("\u{1F5B9} Open URL").clicked() {
-                                                ui.output().open_url =
-                                                    Some(egui::output::OpenUrl {
-                                                        url: format!(
-                                                            "{}/{}",
-                                                            self.base_url, ent.id
-                                                        ),
-                                                        new_tab: true,
-                                                    });
-                                            }
-                                        },
-                                    );
+                                        if ui.button("\u{1F5B9} Open URL").clicked() {
+                                            ui.output().open_url = Some(egui::output::OpenUrl {
+                                                url: format!("{}/{}", self.base_url, ent.id),
+                                                new_tab: true,
+                                            });
+                                        }
+                                    });
                                 });
                             })
                             .body(|ui| match cached_promise.ready() {
